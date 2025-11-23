@@ -30,7 +30,16 @@ services:
     volumes:
       - ./logs:/var/logs/crud
     ports:
-      - "8080:80"
+      - "8085:80"
+    restart: unless-stopped
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.2
+    depends_on:
+      - app
+    volumes:
+      - ./logs:/var/logs/crud:ro
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
     restart: unless-stopped
 
 volumes:
