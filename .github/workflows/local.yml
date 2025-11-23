@@ -1,0 +1,68 @@
+name: CI - Local validation
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  local-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupération du code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Vérification Docker
+      - name: Check Docker version
+        run: docker --version
+
+      - name: Check Docker Compose version
+        run: docker compose version || docker-compose version
+
+      # 3. Build image de l'API
+      - name: Build API image
+        run: |
+          docker build -t crud-api:local ./App
+
+      # 4. Démarrage des services avec docker-compose
+      - name: Start services
+        run: |
+          docker-compose up -d
+
+      # 5. Attendre que l'API soit prête
+      - name: Wait for API to be ready
+        run: |
+          echo "Waiting for API..."
+          sleep 20
+
+      # 6. Test du endpoint /health
+      - name: Test /health endpoint
+        run: |
+          curl -f http://localhost:8080/health
+
+      # 7. Générer volontairement une erreur 404
+      - name: Trigger 404 error
+        run: |
+          curl http://localhost:8080/not-found || true
+
+      # 8. Vérifier que les logs existent
+      - name: Check logs
+        run: |
+          ls -la logs || true
+          test -f logs/app.log && echo "✅ app.log found" || echo "❌ app.log missing"
+          test -f logs/access.log && echo "✅ access.log found" || echo "❌ access.log missing"
+
+      # 9. Afficher les derniers logs (debug)
+      - name: Show last logs
+        run: |
+          echo "---- APP LOG ----"
+          tail -n 5 logs/app.log || true
+          echo "---- ACCESS LOG ----"
+          tail -n 5 logs/access.log || true
+
+      # 10. Nettoyage
+      - name: Cleanup
+        run: |
+          docker-compose down
