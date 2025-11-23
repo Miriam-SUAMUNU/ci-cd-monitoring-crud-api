@@ -40,12 +40,12 @@ jobs:
       # 6. Test du endpoint /health
       - name: Test /health endpoint
         run: |
-          curl -f http://localhost:8080/health
+          curl -f http://localhost:8085/health
 
       # 7. Générer volontairement une erreur 404
       - name: Trigger 404 error
         run: |
-          curl http://localhost:8080/not-found || true
+          curl http://localhost:8085/not-found || true
 
       # 8. Vérifier que les logs existent
       - name: Check logs
