@@ -1,0 +1,56 @@
+name: CI/CD - Cloud Run
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Get version from tag
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+    - name: Login to Docker Hub
+      run: |
+        echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Build and push API image
+      run: |
+        docker build -t suamunu/crud-api:${{ env.VERSION }} -t suamunu/crud-api:latest ./App
+        docker push suamunu/crud-api:${{ env.VERSION }}
+        docker push suamunu/crud-api:latest
+
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Replace variables in cloud-run-service.yaml
+      run: |
+        sed -i "s|__IMAGE_URI__|docker.io/suamunu/crud-api:${{ env.VERSION }}|g" cloud-run-service.yaml
+        sed -i "s|__DB_HOST__|${{ secrets.DB_HOST }}|g" cloud-run-service.yaml
+        sed -i "s|__DB_NAME__|${{ secrets.DB_NAME }}|g" cloud-run-service.yaml
+        sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" cloud-run-service.yaml
+        sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" cloud-run-service.yaml
+        sed -i "s|__LOKI_URL__|${{ secrets.LOKI_URL }}|g" cloud-run-service.yaml
+        sed -i "s|__REGION__|${{ secrets.GCP_REGION }}|g" cloud-run-service.yaml
+        sed -i "s|__PROJECT_ID__|${{ secrets.GCP_PROJECT_ID }}|g" cloud-run-service.yaml
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run services replace cloud-run-service.yaml --region=${{ secrets.GCP_REGION }}
+
+    - name: Allow unauthenticated access
+      run: |
+        gcloud run services add-iam-policy-binding crud-api \
+        --region=${{ secrets.GCP_REGION }} \
+        --member="allUsers" \
+        --role="roles/run.invoker"

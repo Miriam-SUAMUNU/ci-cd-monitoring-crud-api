@@ -1,0 +1,26 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: crud-api
+  namespace: __PROJECT_ID__
+spec:
+  template:
+    spec:
+      containers:
+        - image: __IMAGE_URI__
+          ports:
+            - containerPort: 80
+          env:
+            - name: DB_HOST
+              value: "__DB_HOST__"
+            - name: DB_NAME
+              value: "__DB_NAME__"
+            - name: DB_USER
+              value: "__DB_USER__"
+            - name: DB_PASSWORD
+              value: "__DB_PASSWORD__"
+            - name: LOKI_URL
+              value: "__LOKI_URL__"
+  traffic:
+    - latestRevision: true
+      percent: 100
