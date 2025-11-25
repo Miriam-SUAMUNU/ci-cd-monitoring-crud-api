@@ -29,10 +29,12 @@ function log(level, message, context = {}) {
 }
 
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'crud_app'
+    database: process.env.DB_NAME || 'crud_app',
+    ...(process.env.DB_HOST && process.env.DB_HOST.startsWith('/cloudsql')
+      ? { socketPath: process.env.DB_HOST }
+      : { host: process.env.DB_HOST || 'localhost' })
 };
 
 // Pool de connexions
